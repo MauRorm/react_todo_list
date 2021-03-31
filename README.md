@@ -19,9 +19,6 @@ _Estas instrucciones te permitirán obtener una copia del proyecto en funcionami
 
 _NPM y node en una versión posterior a las 12 e internet por las CDN_
 
-```
-Da un ejemplo
-```
 
 ### Instalación 🔧
 
