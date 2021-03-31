@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>TODO</title>
+    <title>TODO v2.0</title>
     <base href="/" />
     <meta name="TODO" content="React_TODO" />
     <meta charset="UTF-8" />
@@ -35,6 +35,12 @@
       integrity="sha512-bZS47S7sPOxkjU/4Bt0zrhEtWx0y0CRkhEp8IckzK+ltifIIE9EMIMTuT/mEzoIMewUINruDBIR/jJnbguonqQ=="
       crossorigin="anonymous"
     ></script>
+
+    <script
+    src="/UseReducers/todoReducer.js"
+    data-plugins="transform-es2015-modules-umd"
+    type="text/babel"
+  ></script>
 
     <script
       src="/GlobalConstants/apiConstants.js"
@@ -123,40 +129,22 @@
       const { useState, useEffect, useContext } = React;
       const { isNil, isEmpty } = _;
 
-      const AuthHOC = (ComposedComponent) => (newprops) => {
-        class Authenticate extends React.Component {
-          constructor(props) {
-            super(props);
-          }
+      const lol = (props) => {};
 
-          componentDidMount() {
-            this.checkAndRedirect();
-          }
+      const AuthHOC = (ComposedComponent) => (newProps) => {
+        const Component = (props) => {
+          const { isSession } = newProps;
 
-          componentDidUpdate() {
-            this.checkAndRedirect();
-          }
-
-          checkAndRedirect() {
-            const { history } = this.props;
-            const { isSession, setIsSession } = newprops;
+          useEffect(() => {
+            const { history } = props;
             if (isSession === false) {
-              history.push("./");
+              history.push("/");
             }
-          }
+          }, []);
 
-          render() {
-            const { isSession } = newprops;
-            return (
-              <div>
-                {isSession && (
-                  <ComposedComponent {...this.props} {...newprops} />
-                )}
-              </div>
-            );
-          }
-        }
-        return Authenticate;
+          return <div>{isSession && <ComposedComponent {...props} />}</div>;
+        };
+        return Component;
       };
 
       const App = () => {
@@ -187,7 +175,9 @@
                   <Route
                     path="/home"
                     exact
-                    component={AuthHOC(Home)(Object.assign(sessionData, profile))}
+                    component={AuthHOC(Home)(
+                      Object.assign(sessionData, profile)
+                    )}
                   />
                 </div>
               </ROUTER>

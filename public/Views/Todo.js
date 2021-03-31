@@ -1,11 +1,14 @@
-import useFetch from "../CustomHooks/Fetch";
+import useFetchTwo from "../CustomHooks/Fetch";
 import CustomButton from "/Components/CustomButton";
 import CustomModal from "../Components/CustomModal";
 import CustomInput from "../Components/CustomInput";
 import API_CONSTANTS from "../GlobalConstants/apiConstants";
 import VALIDATION_CONSTANTS from "../GlobalConstants/validationConstants";
+import {
+  initialFormState, init, reducer,
+} from '../UseReducers/todoReducer';
 
-const { useState, useEffect, useContext } = React;
+const { useEffect, useContext, useReducer } = React;
 
 const { isNil, isEmpty } = _;
 import ContextSession from "../ContextStore/contextSession";
@@ -18,27 +21,21 @@ function uuidv4() {
   });
 }
 
+
 const Todo = (props) => {
-  const [isGetTodo, setIsGetTodo] = useState(false);
-  const [isPostTodo, setIsPostTodo] = useState(false);
-  const [isPatchTodo, setIsPatchTodo] = useState(false);
-  const [isDeleteTodo, setIsDeleteTodo] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialFormState, init);
+  const {
+    titleR,
+    titleErrorTextR,
+    messageR,
+    messageErrorTextR,
+    taskIdR,
+    operationTypeR,
+    isOpenModal,
+    isOpenModalDelete,
+  } = state;
 
   const sessionContextData = useContext(ContextSession);
-
-  const [isOpenModal, setIsOpenModal] = useState(false);
-
-  const [isOpenModalDelete, setIsOpenModalDelete] = useState(false);
-
-  const [operationType, setOperationType] = useState(null);
-
-  const [title, setTitle] = useState(null);
-  const [titleErrorText, setTitleErrorText] = useState(null);
-
-  const [message, setMessage] = useState(null);
-  const [messageErrorText, setMessageErrorText] = useState(null);
-
-  const [taskId, setTaskId] = useState(null);
 
   const OPTIONS = {
     headers: {
@@ -46,105 +43,78 @@ const Todo = (props) => {
     },
   };
 
-  const [todoList] = useFetch(
-    API_CONSTANTS.API_TODO,
-    "get",
-    null,
-    OPTIONS,
-    isGetTodo,
-    setIsGetTodo
-  );
+  const [todoList, getApiTodoList] = useFetchTwo();
 
-  const [taskInserted] = useFetch(
-    API_CONSTANTS.API_TODO,
-    "post",
-    {
-      id: uuidv4(),
-      title,
-      message,
-    },
-    OPTIONS,
-    isPostTodo,
-    setIsPostTodo
-  );
+  const [taskInserted, postApiAddTaskToList] = useFetchTwo();
 
-  const [taskUpdated] = useFetch(
-    `${API_CONSTANTS.API_TODO}${taskId}`,
-    "put",
-    {
-      id: taskId,
-      title,
-      message,
-    },
-    OPTIONS,
-    isPatchTodo,
-    setIsPatchTodo
-  );
-  const [taskDeleted] = useFetch(
-    `${API_CONSTANTS.API_TODO}${taskId}`,
-    "delete",
-    null,
-    OPTIONS,
-    isDeleteTodo,
-    setIsDeleteTodo
-  );
+  const [taskUpdated, putApiUpdateTaskToList] = useFetchTwo();
+
+  const [taskDeleted, deleteApiTaskToList] = useFetchTwo();
 
   useEffect(() => {
-    setIsGetTodo(true);
+    getApiTodoList("get", API_CONSTANTS.API_TODO, OPTIONS);
   }, []);
 
-  const onclearState = ()=>{
-    setIsGetTodo(true);
-    setIsOpenModal(false);
-    setTitle("");
-    setTitleErrorText("");
-    setMessage("");
-    setMessageErrorText("");
-    setOperationType(null);
-    setTaskId(null);
-  }
-
-  useEffect(() => {
-    onclearState();
-  }, [taskInserted]);
-
-  useEffect(() => {
-    onclearState();
-  }, [taskUpdated]);
-
-  useEffect(() => {
-    setIsGetTodo(true);
-    setIsOpenModalDelete(false);
-    setTaskId(null);
-  }, [taskDeleted]);
+  const onclearState = () => {
+    dispatch({ type: "clearAll" });
+  };
 
   const validateData = (title, message) => {
     let isSuccess = true;
     if (isNil(title) || isEmpty(title)) {
-      setTitleErrorText(VALIDATION_CONSTANTS.REQUIRE_FIELD);
+      dispatch({
+        type: "setSTitleErrorText",
+        data: VALIDATION_CONSTANTS.REQUIRE_FIELD,
+      });
       isSuccess = false;
     }
     if (isNil(message) || isEmpty(message)) {
       isSuccess = false;
-      setMessageErrorText(VALIDATION_CONSTANTS.REQUIRE_FIELD);
+      dispatch({
+        type: "setMessageErrorText",
+        data: VALIDATION_CONSTANTS.REQUIRE_FIELD,
+      });
     }
     return isSuccess;
   };
 
-  const onSendTask = () => {
-    const isCompletedForm = validateData(title, message);
+  const onSendTask = async () => {
+    const isCompletedForm = validateData(titleR, messageR);
     if (isCompletedForm) {
-      if (operationType === "add") {
-        setIsPostTodo(true);
-      } else {
-        setIsPatchTodo(true);
+      if (operationTypeR === "add") {
+        await postApiAddTaskToList("post", API_CONSTANTS.API_TODO, OPTIONS, {
+          id: uuidv4(),
+          title: titleR,
+          message: messageR,
+        });
+        onclearState();
+        getApiTodoList("get", API_CONSTANTS.API_TODO, OPTIONS);
+      } else if (operationTypeR === "update") {
+        putApiUpdateTaskToList(
+          "put",
+          `${API_CONSTANTS.API_TODO}${taskIdR}`,
+          OPTIONS,
+          {
+            id: taskIdR,
+            title: titleR,
+            message: messageR,
+          }
+        );
+        onclearState();
+        getApiTodoList("get", API_CONSTANTS.API_TODO, OPTIONS);
       }
     }
     return null;
   };
 
-  const onDeleteTask = () => {
-    setIsDeleteTodo(true);
+  const onDeleteTask = async () => {
+    await deleteApiTaskToList(
+      "delete",
+      `${API_CONSTANTS.API_TODO}${taskIdR}`,
+      OPTIONS
+    );
+    onclearState();
+    getApiTodoList("get", API_CONSTANTS.API_TODO, OPTIONS);
   };
 
   return (
@@ -152,7 +122,7 @@ const Todo = (props) => {
       <div>
         <CustomModal
           isOpenModal={isOpenModal}
-          title={operationType === "add" ? "Añadir tarea" : "Actualizar tarea"}
+          title={operationTypeR === "add" ? "Añadir tarea" : "Actualizar tarea"}
           width="32em"
           height="15em"
           content={
@@ -160,14 +130,14 @@ const Todo = (props) => {
               <div className="input_div_form">
                 <CustomInput
                   id="title"
-                  value={title}
+                  value={titleR}
                   maxlength={15}
-                  errorText={titleErrorText}
+                  errorText={titleErrorTextR}
                   placeholder="Título"
                   textFieldColor={"#0c0b0b"}
                   onChange={(event, value) => {
-                    setTitleErrorText("");
-                    setTitle(value);
+                    dispatch({ type: "setTitle", data: value, count: 2 });
+                    dispatch({ type: "setSTitleErrorText", data: "" });
                   }}
                   onBlur={(event, value) => {}}
                 />
@@ -177,13 +147,13 @@ const Todo = (props) => {
                 <CustomInput
                   id="message"
                   maxlength={55}
-                  value={message}
-                  errorText={messageErrorText}
+                  value={messageR}
+                  errorText={messageErrorTextR}
                   placeholder="Mensaje"
                   textFieldColor={"#0c0b0b"}
                   onChange={(event, value) => {
-                    setMessageErrorText("");
-                    setMessage(value);
+                    dispatch({ type: "setMessage", data: value });
+                    dispatch({ type: "setMessageErrorText", data: "" });
                   }}
                   onBlur={(event, value) => {}}
                 />
@@ -194,13 +164,7 @@ const Todo = (props) => {
           closeButtonText={"Cancelar"}
           onclickAccept={onSendTask}
           onClose={() => {
-            setTaskId(null);
-            setOperationType(null);
-            setIsOpenModal(false);
-            setTitle("");
-            setTitleErrorText("");
-            setMessage("");
-            setMessageErrorText("");
+            onclearState();
           }}
         />
         <CustomModal
@@ -217,8 +181,7 @@ const Todo = (props) => {
           closeButtonText={"Cancelar"}
           onclickAccept={onDeleteTask}
           onClose={() => {
-            setIsOpenModalDelete(false);
-            setTaskId(null);
+            onclearState();
           }}
         />
         <div style={{ display: "inline-block" }}>
@@ -229,8 +192,8 @@ const Todo = (props) => {
               </button>
             )}
             onClick={() => {
-              setOperationType("add");
-              setIsOpenModal(true);
+              dispatch({ type: "setOperationType", data: "add" });
+              dispatch({ type: "setIsOpenModal", data: true });
             }}
             className="success-button center-button"
             buttonText="Añadir tarea +"
@@ -256,11 +219,15 @@ const Todo = (props) => {
                       </button>
                     )}
                     onClick={() => {
-                      setTaskId(item.id);
-                      setOperationType("update");
-                      setIsOpenModal(true);
-                      setTitle(item.title);
-                      setMessage(item.message);
+                      dispatch({ type: "setTaskId", data: item.id });
+                      dispatch({ type: "setOperationType", data: "update" });
+                      dispatch({ type: "setIsOpenModal", data: true });
+                      dispatch({
+                        type: "setTitle",
+                        data: item.title,
+                        count: 4,
+                      });
+                      dispatch({ type: "setMessage", data: item.message });
                     }}
                     className="success-button todo_list_button_div"
                     buttonText="Actualizar tarea"
@@ -273,8 +240,8 @@ const Todo = (props) => {
                       </button>
                     )}
                     onClick={() => {
-                      setTaskId(item.id);
-                      setIsOpenModalDelete(true);
+                      dispatch({ type: "setTaskId", data: item.id });
+                      dispatch({ type: "setIsOpenModalDelete", data: true });
                     }}
                     className="cancel-button todo_list_button_div"
                     buttonText="Eliminar tarea"

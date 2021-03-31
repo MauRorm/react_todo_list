@@ -1,4 +1,4 @@
-import useFetch from "../CustomHooks/Fetch";
+import useFetchTwo from "../CustomHooks/Fetch";
 import CustomInput from "../Components/CustomInput";
 import ContextSession from "../ContextStore/contextSession";
 import ContextProfile from "../ContextStore/contextProfile";
@@ -16,41 +16,16 @@ const Login = (props) => {
   const { setIsSession, setTokenSession } = useContext(ContextSession);
   const { setProfile } = useContext(ContextProfile);
 
-  const [shouldFetch, setShouldFetch] = useState(false);
-  const [shouldFetchProfile, setShouldFetchProfile] = useState(false);
+  const [loginData, postApiLogin] = useFetchTwo();
 
-  const [loginData] = useFetch(
-    API_CONSTANTS.API_POST_LOGIN,
-    "post",
-    {
-      email: isNil(userName) ? userName : userName.trim(),
-      password: isNil(password) ? password : password.trim(),
-    },
-    {},
-    shouldFetch,
-    setShouldFetch
-  );
-
-  const OPTIONS = {
-    headers: {
-      Authorization: isNil(loginData) ? "" : `Bearer ${loginData.access_token}`,
-    },
-  };
-
-  const [userData] = useFetch(
-    API_CONSTANTS.API_GET_PROFILE,
-    "get",
-    null,
-    OPTIONS,
-    shouldFetchProfile,
-    setShouldFetchProfile
-  );
+  const [userData, getApiProfile] = useFetchTwo();
+  
 
   useEffect(() => {
     if (loginData !== null) {
       if (loginData.isError === false) {
         setTokenSession(loginData.access_token);
-        setShouldFetchProfile(true);
+        onGetDataProfile(loginData.access_token);
       } else {
         alert(loginData.message);
       }
@@ -67,13 +42,31 @@ const Login = (props) => {
     }
   }, [userData]);
 
-  const onClickLogin = () => {
+  const onClickLogin = async () => {
     const isCompletedForm = validateLoginData(userName, password);
     if (isCompletedForm) {
-      setShouldFetch(true);
+      postApiLogin(
+        "post",
+        API_CONSTANTS.API_POST_LOGIN,
+        {},
+        {
+          email: isNil(userName) ? userName : userName.trim(),
+          password: isNil(password) ? password : password.trim(),
+        }
+      );
     }
     return null;
   };
+
+  const onGetDataProfile = async (token = {})=>{
+    const OPTIONS = {
+      headers: {
+        Authorization: isNil(loginData) ? "" : `Bearer ${token}`,
+      },
+    };
+  
+    getApiProfile('get', API_CONSTANTS.API_GET_PROFILE, OPTIONS);
+  }
 
   const validateLoginData = (user, pass) => {
     let isSuccess = true;
