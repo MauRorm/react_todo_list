@@ -1,0 +1,209 @@
+<html>
+  <head>
+    <title>TODO</title>
+    <base href="/" />
+    <meta name="TODO" content="React_TODO" />
+    <meta charset="UTF-8" />
+    <meta name="keywords" content="HTML, CSS, JavaScript, React" />
+    <meta name="author" content="Mauricio Romero" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta property="og:image" content="/meta-image.png" />
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script
+      crossorigin
+      src="https://unpkg.com/react@17/umd/react.production.min.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"
+    ></script>
+    <script
+      src="https://unpkg.com/babel-standalone@6.24.0/babel.min.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"
+      integrity="sha512-WFN04846sdKMIP5LKNphMaWzU7YpMyCU245etK3g/2ARYbPK9Ub18eG+ljU96qKRCWh+quCY7yefSmlkQw1ANQ=="
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://unpkg.com/react-router-dom@5.0.0/umd/react-router-dom.min.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"
+      integrity="sha512-bZS47S7sPOxkjU/4Bt0zrhEtWx0y0CRkhEp8IckzK+ltifIIE9EMIMTuT/mEzoIMewUINruDBIR/jJnbguonqQ=="
+      crossorigin="anonymous"
+    ></script>
+
+    <script
+      src="/GlobalConstants/apiConstants.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/GlobalConstants/validationConstants.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/Components/CustomInput.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/Components/CustomModal.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/Components/CustomButton.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/ContextStore/contextSession.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/ContextStore/contextProfile.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/CustomHooks/Fetch.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/Views/Todo.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/Views/Login.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/Views/Header.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script
+      src="/Views/Home.js"
+      data-plugins="transform-es2015-modules-umd"
+      type="text/babel"
+    ></script>
+
+    <script data-plugins="transform-es2015-modules-umd" type="text/babel">
+      import CustomInput from "/Components/CustomInput";
+      import CustomModal from "/Components/CustomModal";
+      import useFetch from "/CustomHooks/Fetch";
+      import ContextSession from "/ContextStore/contextSession";
+      import ContextProfile from "/ContextStore/contextProfile";
+      import Login from "/Views/Login";
+      import Header from "/Views/Header";
+      import Home from "/Views/Home";
+
+      const Link = ReactRouterDOM.Link;
+      const Route = ReactRouterDOM.Route;
+      const { useState, useEffect, useContext } = React;
+      const { isNil, isEmpty } = _;
+
+      const AuthHOC = (ComposedComponent) => (newprops) => {
+        class Authenticate extends React.Component {
+          constructor(props) {
+            super(props);
+          }
+
+          componentDidMount() {
+            this.checkAndRedirect();
+          }
+
+          componentDidUpdate() {
+            this.checkAndRedirect();
+          }
+
+          checkAndRedirect() {
+            const { history } = this.props;
+            const { isSession, setIsSession } = newprops;
+            if (isSession === false) {
+              history.push("./");
+            }
+          }
+
+          render() {
+            const { isSession } = newprops;
+            return (
+              <div>
+                {isSession && (
+                  <ComposedComponent {...this.props} {...newprops} />
+                )}
+              </div>
+            );
+          }
+        }
+        return Authenticate;
+      };
+
+      const App = () => {
+        const [isSession, setIsSession] = useState(false);
+        const [tokenSession, setTokenSession] = useState({});
+        const [profile, setProfile] = useState({});
+        const sessionData = {
+          isSession,
+          setIsSession,
+          setTokenSession,
+          tokenSession,
+        };
+        const profileContext = { profile, setProfile };
+        const ROUTER = ReactRouterDOM.Switch;
+        return (
+          <ContextSession.Provider value={sessionData}>
+            <ContextProfile.Provider value={profileContext}>
+              <ROUTER history={ReactRouterDOM.browserHistory}>
+                <div className="main_container">
+                  {isSession === true && (
+                    <Header
+                      profile={profile}
+                      useHistory={ReactRouterDOM.useHistory}
+                    />
+                  )}
+
+                  <Route path="/" exact component={Login} />
+                  <Route
+                    path="/home"
+                    exact
+                    component={AuthHOC(Home)(Object.assign(sessionData, profile))}
+                  />
+                </div>
+              </ROUTER>
+            </ContextProfile.Provider>
+          </ContextSession.Provider>
+        );
+      };
+
+      ReactDOM.render(
+        <ReactRouterDOM.BrowserRouter>
+          <App />
+        </ReactRouterDOM.BrowserRouter>,
+        document.getElementById("root")
+      );
+    </script>
+
+    <script src="{process.env.BROWSER_REFRESH_URL}"></script>
+  </body>
+</html>
